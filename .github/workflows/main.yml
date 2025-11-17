@@ -12,27 +12,27 @@ jobs:
       - name: 1. Checkout Repository (Get boot.img)
         uses: actions/checkout@v4
         
-      - name: 2. Set up Environment and Install twrpdtgen
+      - name: 2. Set up Environment and Install twrpdtgen (V2.1.2)
         run: |
           # Install Python, git, and the generator utility
           sudo apt update
           sudo apt install -y git python3 python3-pip
-          pip3 install twrpdtgen
+          # Installing specific older version (2.1.2) to fix build.prop assertion error
+          pip3 install twrpdtgen==2.1.2
 
-      - name: 3. 🌳 Generate Device Tree from boot.img (ABSOLUTE MINIMUM)
+      - name: 3. 🌳 Generate Device Tree from boot.img
         run: |
           echo "Executing twrpdtgen to generate device tree from boot.img..."
-          # Command format: twrpdtgen [image]. Removing all flags and positional arguments.
+          # Command format: twrpdtgen [image]. We rely on the tool to infer the device path.
           python3 -m twrpdtgen boot.img
           
           # Check if files were created in the expected location:
-          echo "Listing generated files (looking for device/lenovo/YT-X705X):"
+          echo "Listing generated files (looking for device/):"
           ls -R device/
 
       - name: 4. Upload Device Tree as Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Generated-Device-Tree-Artifact
-          # We upload the entire 'device' folder, as the location might be inferred by the tool.
           path: device/
           retention-days: 1
