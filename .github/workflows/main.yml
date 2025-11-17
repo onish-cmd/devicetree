@@ -1,0 +1,37 @@
+name: Device Tree Generator Only (YT-X705X)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate_tree:
+    name: Generate and Upload Device Tree
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: 1. Checkout Repository (Get boot.img)
+        uses: actions/checkout@v4
+        
+      - name: 2. Set up Environment and Install twrpdtgen
+        run: |
+          # Install Python, git, and the generator utility
+          sudo apt update
+          sudo apt install -y git python3 python3-pip
+          pip3 install twrpdtgen
+
+      - name: 3. 🌳 Generate Device Tree from boot.img
+        run: |
+          echo "Executing twrpdtgen to generate device tree from boot.img..."
+          # This command creates the target folder: ./device/lenovo/YT-X705X
+          python3 -m twrpdtgen -i -p boot.img YT_X705X
+          
+          # Check if files were created
+          echo "Listing generated files:"
+          ls -R device/lenovo/YT-X705X/
+
+      - name: 4. Upload Device Tree as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Generated-YT-X705X-Device-Tree
+          path: device/lenovo/YT-X705X/
+          retention-days: 1
