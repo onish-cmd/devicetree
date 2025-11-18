@@ -89,6 +89,12 @@ BOARD_AVB_RECOVERY_ROLLBACK_INDEX_LOCATION := 1
 PLATFORM_SECURITY_PATCH := 2099-12-31
 VENDOR_SECURITY_PATCH := 2099-12-31
 PLATFORM_VERSION := 16.1.0
+# --- ADD THESE LINES ---
+# Set the target platform version for compatibility with Android 10/Q
+TARGET_PLATFORM_VERSION := 10.0
+PLATFORM_VERSION_LAST_STABLE := 10.0
+# -----------------------
+
 
 # TWRP Configuration
 TW_THEME := portrait_hdpi
