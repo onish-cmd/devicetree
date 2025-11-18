@@ -14,43 +14,51 @@ jobs:
     
     steps:
       - name: Checkout Repository
-        # Action to pull down the repository code, including the boot.img
         uses: actions/checkout@v4
 
       - name: Set up Python
-        # twrpdtgen is a Python package, so we set up Python 3.x
         uses: actions/setup-python@v5
         with:
           python-version: '3.x' 
 
-      - name: Install twrpdtgen
-        # Install the device tree generator tool globally
-        run: pip install twrpdtgen
+      - name: Install and Upgrade twrpdtgen
+        # We use --upgrade to ensure the absolute latest version is installed,
+        # which should contain patches for device property extraction errors.
+        run: pip install twrpdtgen --upgrade
 
-      - name: Generate Device Tree from boot.img (Fixed Command)
+      - name: Generate Device Tree from boot.img (Upgraded Tool)
         id: generate
-        # We explicitly set the vendor and codename to avoid the "AssertionError: Property ro.product.system.device..." error.
+        # Using the standard command, hoping the upgraded tool can now find the properties.
+        # Format: python3 -m twrpdtgen <path to the recovery image>
         run: |
-          echo "Starting device tree generation for YT-X705X (using explicit vendor/codename)..."
+          echo "Starting device tree generation for YT-X705X with upgraded twrpdtgen..."
           
-          # Use explicit flags to ensure twrpdtgen creates the correct directory structure 
-          python3 -m twrpdtgen --vendor lenovo --codename YT-X705X ./boot.img
+          # Run the generation
+          python3 -m twrpdtgen ./boot.img
           
-          # The script saves the output to the known location based on vendor/codename
-          DT_OUTPUT_PATH="device/lenovo/YT-X705X"
+          # twrpdtgen output directory depends on the name it successfully extracts.
+          # We'll use a more robust search pattern for the device tree directory 
+          # which should be named after the codename it extracts.
           
-          # Check if the directory was created successfully
+          # Search for the directory under 'device/' ending with 'YT-X705X'
+          DT_OUTPUT_PATH=$(find . -type d -name "YT-X705X" -path "./device/*" 2>/dev/null | head -n 1)
+          
+          # If the standard location based on the codename is not found, twrpdtgen may have used 
+          # a default or alternate location. Let's rely on finding the specific codename folder.
+          
           if [ -d "$DT_OUTPUT_PATH" ]; then
             echo "Successfully generated device tree directory at: $DT_OUTPUT_PATH"
             # Set the path as an output variable for the upload step
             echo "device_tree_path=$DT_OUTPUT_PATH" >> $GITHUB_OUTPUT
           else
-            echo "Critical Error: Could not locate the generated device tree directory at $DT_OUTPUT_PATH."
+            echo "Critical Error: Could not locate the generated device tree directory named 'YT-X705X'."
+            echo "Please verify the codename extracted by twrpdtgen or its output location."
             exit 1
           fi
 
       - name: Verify Generated Files
         # List the contents of the generated folder for verification and debugging
+        if: success()
         run: |
           echo "--- Contents of generated device tree directory ---"
           ls -R ${{ steps.generate.outputs.device_tree_path }}
@@ -58,9 +66,8 @@ jobs:
       - name: Upload Generated Device Tree Artifact
         uses: actions/upload-artifact@v4
         with:
-          # Naming the artifact clearly for easy download
           name: lenovo-YT-X705X-device-tree
-          # Upload the entire directory created by twrpdtgen
+          # Upload the entire directory found in the previous step
           path: ${{ steps.generate.outputs.device_tree_path }}
           retention-days: 7
           compression-level: 9
