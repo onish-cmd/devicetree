@@ -5,4 +5,4 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-LOCAL_PATH := device/lenovo/YT-X705X
+LOCAL_PATH := device/lenovo/YTX705
