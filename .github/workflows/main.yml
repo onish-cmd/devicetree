@@ -1,5 +1,5 @@
-# Workflow to generate a TWRP device tree using twrpdtgen and upload the result.
-name: Device Tree Generation (Lenovo YT-X705X)
+# Workflow to generate a TWRP device tree using a manual modification workaround.
+name: Device Tree Generation (Lenovo YT-X705X) - AIK Fix
 
 on:
   # Trigger the workflow on every push to the main branch
@@ -21,38 +21,54 @@ jobs:
         with:
           python-version: '3.x' 
 
-      - name: Install and Upgrade twrpdtgen
-        # We use --upgrade to ensure the absolute latest version is installed,
-        # which should contain patches for device property extraction errors.
-        run: pip install twrpdtgen --upgrade
-
-      - name: Generate Device Tree from boot.img (Upgraded Tool)
-        id: generate
-        # Using the standard command, hoping the upgraded tool can now find the properties.
-        # Format: python3 -m twrpdtgen <path to the recovery image>
+      - name: Install twrpdtgen and required dependencies
+        # Install twrpdtgen and ensure we have core utilities like 'find' and 'mktemp'
         run: |
-          echo "Starting device tree generation for YT-X705X with upgraded twrpdtgen..."
+          pip install twrpdtgen
+          sudo apt-get update && sudo apt-get install -y git build-essential
+
+      - name: Manual Image Fix and Device Tree Generation
+        id: generate
+        run: |
+          echo "--- Starting Manual Image Fix and Generation ---"
           
-          # Run the generation
-          python3 -m twrpdtgen ./boot.img
+          # 1. Initialize twrpdtgen to clone the AIK tools (required dependency)
+          # We run a dummy call that fails but ensures AIK tools are cloned into the working directory.
+          echo "1. Ensuring AIK tools are cloned..."
+          python3 -m twrpdtgen dummy_image || true
+
+          # Check if AIK was successfully cloned
+          if [ ! -d "working/AIK" ]; then
+            echo "Critical Error: AIK tools were not cloned by twrpdtgen. Cannot proceed."
+            exit 1
+          fi
           
-          # twrpdtgen output directory depends on the name it successfully extracts.
-          # We'll use a more robust search pattern for the device tree directory 
-          # which should be named after the codename it extracts.
+          # 2. Unpack the original boot.img
+          echo "2. Unpacking original boot.img..."
+          working/AIK/unpackimg.sh ./boot.img
+
+          # 3. Inject the missing device property into default.prop
+          # This bypasses the AssertionError from earlier.
+          echo "3. Injecting missing codename property into extracted image..."
+          echo "ro.product.system.device=YT-X705X" >> split_img/ramdisk/default.prop
           
-          # Search for the directory under 'device/' ending with 'YT-X705X'
+          # 4. Repack the modified image
+          MODIFIED_IMAGE="boot_modified.img"
+          echo "4. Repacking modified image to $MODIFIED_IMAGE..."
+          working/AIK/repackimg.sh -o $MODIFIED_IMAGE
+
+          # 5. Run twrpdtgen on the modified image
+          echo "5. Running twrpdtgen on the modified image..."
+          python3 -m twrpdtgen $MODIFIED_IMAGE
+          
+          # 6. Locate the output directory
           DT_OUTPUT_PATH=$(find . -type d -name "YT-X705X" -path "./device/*" 2>/dev/null | head -n 1)
-          
-          # If the standard location based on the codename is not found, twrpdtgen may have used 
-          # a default or alternate location. Let's rely on finding the specific codename folder.
           
           if [ -d "$DT_OUTPUT_PATH" ]; then
             echo "Successfully generated device tree directory at: $DT_OUTPUT_PATH"
-            # Set the path as an output variable for the upload step
             echo "device_tree_path=$DT_OUTPUT_PATH" >> $GITHUB_OUTPUT
           else
             echo "Critical Error: Could not locate the generated device tree directory named 'YT-X705X'."
-            echo "Please verify the codename extracted by twrpdtgen or its output location."
             exit 1
           fi
 
