@@ -16,7 +16,7 @@ $(call inherit-product, vendor/omni/config/common.mk)
 $(call inherit-product, device/lenovo/YTX705/device.mk)
 
 PRODUCT_DEVICE := YTX705                       # FIXED: Product device name
-PRODUCT_NAME := omni_YTX705                    # FIXED: Product name
+PRODUCT_NAME := omni_YTX705               # FIXED: Product name
 PRODUCT_BRAND := Lenovo
 PRODUCT_MODEL := Lenovo YTX705                 # FIXED: Product model
 PRODUCT_MANUFACTURER := lenovo
