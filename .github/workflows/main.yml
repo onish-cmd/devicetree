@@ -1,38 +1,75 @@
-name: Device Tree Generator Only (YT-X705X)
+# Workflow to generate a TWRP device tree using twrpdtgen and upload the result.
+name: Device Tree Generation (Lenovo YT-X705X)
 
 on:
+  # Trigger the workflow on every push to the main branch
+  push:
+    branches: [ main ]
+  # Allow manual execution via the GitHub Actions UI
   workflow_dispatch:
 
 jobs:
-  generate_tree:
-    name: Generate and Upload Device Tree
-    runs-on: ubuntu-22.04
-
+  generate_and_upload:
+    runs-on: ubuntu-latest
+    
     steps:
-      - name: 1. Checkout Repository (Get boot.img)
+      - name: Checkout Repository
+        # Action to pull down the repository code, including the boot.img
         uses: actions/checkout@v4
-        
-      - name: 2. Set up Environment and Install twrpdtgen (V2.1.2)
-        run: |
-          # Install Python, git, and the generator utility
-          sudo apt update
-          sudo apt install -y git python3 python3-pip
-          # Installing specific older version (2.1.2) to fix build.prop assertion error
-          pip3 install twrpdtgen==2.1.0
 
-      - name: 3. 🌳 Generate Device Tree from boot.img
+      - name: Set up Python
+        # twrpdtgen is a Python package, so we set up Python 3.x
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x' 
+
+      - name: Install twrpdtgen
+        # Install the device tree generator tool globally
+        run: pip install twrpdtgen
+
+      - name: Generate Device Tree from boot.img
+        id: generate
+        # Documentation: python3 -m twrpdtgen <path to the recovery image>
         run: |
-          echo "Executing twrpdtgen to generate device tree from boot.img..."
-          # Command format: twrpdtgen [image]. We rely on the tool to infer the device path.
-          python3 -m twrpdtgen boot.img
+          echo "Starting device tree generation for YT-X705X..."
+          # The boot.img is in the root of the repo, so we use ./boot.img
+          python3 -m twrpdtgen ./boot.img
           
-          # Check if files were created in the expected location:
-          echo "Listing generated files (looking for device/):"
-          ls -R device/
+          # The script saves the output to a standard location like 'working/vendor/codename'
+          # We check for the output directory
+          DT_OUTPUT_PATH="device/lenovo/YT-X705X"
+          
+          # Check for a common output path (twrpdtgen sometimes creates the path directly)
+          if [ -d "$DT_OUTPUT_PATH" ]; then
+            echo "Device tree directory found at: $DT_OUTPUT_PATH"
+            # Set the path as an output variable for the upload step
+            echo "device_tree_path=$DT_OUTPUT_PATH" >> $GITHUB_OUTPUT
+          else
+            echo "Error: Standard device tree path $DT_OUTPUT_PATH not found. Checking 'working/' directory."
+            # Fallback to the 'working' directory mentioned in the docs
+            DT_OUTPUT_PATH_FALLBACK=$(find working -maxdepth 3 -type d -name "YT-X705X" 2>/dev/null | head -n 1)
+            
+            if [ -d "$DT_OUTPUT_PATH_FALLBACK" ]; then
+                echo "Device tree directory found at: $DT_OUTPUT_PATH_FALLBACK"
+                echo "device_tree_path=$DT_OUTPUT_PATH_FALLBACK" >> $GITHUB_OUTPUT
+            else
+                echo "Critical Error: Could not locate the generated device tree directory."
+                exit 1
+            fi
+          fi
 
-      - name: 4. Upload Device Tree as Artifact
+      - name: Verify Generated Files
+        # List the contents of the generated folder for verification and debugging
+        run: |
+          echo "--- Contents of generated device tree directory ---"
+          ls -R ${{ steps.generate.outputs.device_tree_path }}
+
+      - name: Upload Generated Device Tree Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Generated-Device-Tree-Artifact
-          path: device/
-          retention-days: 1
+          # Naming the artifact clearly for easy download
+          name: lenovo-YT-X705X-device-tree
+          # Upload the entire directory created by twrpdtgen
+          path: ${{ steps.generate.outputs.device_tree_path }}
+          retention-days: 7
+          compression-level: 9
