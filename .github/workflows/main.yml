@@ -1,4 +1,4 @@
-# Workflow to generate a TWRP device tree using a manual modification workaround.
+# Workflow to generate a TWRP device tree using a manual modification workaround (Direct AIK Clone).
 name: Device Tree Generation (Lenovo YT-X705X) - AIK Fix
 
 on:
@@ -16,36 +16,34 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python and Dependencies
         uses: actions/setup-python@v5
         with:
           python-version: '3.x' 
-
-      - name: Install twrpdtgen and required dependencies
-        # Install twrpdtgen and ensure we have core utilities like 'find' and 'mktemp'
+      
+      - name: Install twrpdtgen and AIK dependencies
         run: |
+          # Install twrpdtgen
           pip install twrpdtgen
-          sudo apt-get update && sudo apt-get install -y git build-essential
+          # Install utilities needed for AIK (e.g., cpio, required for unpacking/repacking)
+          sudo apt-get update && sudo apt-get install -y git build-essential cpio
 
       - name: Manual Image Fix and Device Tree Generation
         id: generate
         run: |
           echo "--- Starting Manual Image Fix and Generation ---"
           
-          # 1. Initialize twrpdtgen to clone the AIK tools (required dependency)
-          # We run a dummy call that fails but ensures AIK tools are cloned into the working directory.
-          echo "1. Ensuring AIK tools are cloned..."
-          python3 -m twrpdtgen dummy_image || true
+          # 1. Directly Clone AIK Tools
+          AIK_DIR="AIK"
+          echo "1. Cloning AIK tools to $AIK_DIR..."
+          git clone https://github.com/carliv/android-image-kitchen.git $AIK_DIR
 
-          # Check if AIK was successfully cloned
-          if [ ! -d "working/AIK" ]; then
-            echo "Critical Error: AIK tools were not cloned by twrpdtgen. Cannot proceed."
-            exit 1
-          fi
-          
           # 2. Unpack the original boot.img
           echo "2. Unpacking original boot.img..."
-          working/AIK/unpackimg.sh ./boot.img
+          # Move boot.img into the AIK folder for convenience with their scripts
+          mv ./boot.img $AIK_DIR/
+          cd $AIK_DIR
+          ./unpackimg.sh boot.img
 
           # 3. Inject the missing device property into default.prop
           # This bypasses the AssertionError from earlier.
@@ -53,11 +51,12 @@ jobs:
           echo "ro.product.system.device=YT-X705X" >> split_img/ramdisk/default.prop
           
           # 4. Repack the modified image
-          MODIFIED_IMAGE="boot_modified.img"
+          MODIFIED_IMAGE="../boot_modified.img" # Save modified image outside AIK dir
           echo "4. Repacking modified image to $MODIFIED_IMAGE..."
-          working/AIK/repackimg.sh -o $MODIFIED_IMAGE
+          ./repackimg.sh -o $MODIFIED_IMAGE
 
-          # 5. Run twrpdtgen on the modified image
+          # 5. Move back to root directory and run twrpdtgen on the modified image
+          cd ..
           echo "5. Running twrpdtgen on the modified image..."
           python3 -m twrpdtgen $MODIFIED_IMAGE
           
@@ -69,6 +68,8 @@ jobs:
             echo "device_tree_path=$DT_OUTPUT_PATH" >> $GITHUB_OUTPUT
           else
             echo "Critical Error: Could not locate the generated device tree directory named 'YT-X705X'."
+            echo "Listing current directory contents for debugging:"
+            ls -R
             exit 1
           fi
 
