@@ -27,35 +27,26 @@ jobs:
         # Install the device tree generator tool globally
         run: pip install twrpdtgen
 
-      - name: Generate Device Tree from boot.img
+      - name: Generate Device Tree from boot.img (Fixed Command)
         id: generate
-        # Documentation: python3 -m twrpdtgen <path to the recovery image>
+        # We explicitly set the vendor and codename to avoid the "AssertionError: Property ro.product.system.device..." error.
         run: |
-          echo "Starting device tree generation for YT-X705X..."
-          # The boot.img is in the root of the repo, so we use ./boot.img
-          python3 -m twrpdtgen ./boot.img
+          echo "Starting device tree generation for YT-X705X (using explicit vendor/codename)..."
           
-          # The script saves the output to a standard location like 'working/vendor/codename'
-          # We check for the output directory
+          # Use explicit flags to ensure twrpdtgen creates the correct directory structure 
+          python3 -m twrpdtgen --vendor lenovo --codename YT-X705X ./boot.img
+          
+          # The script saves the output to the known location based on vendor/codename
           DT_OUTPUT_PATH="device/lenovo/YT-X705X"
           
-          # Check for a common output path (twrpdtgen sometimes creates the path directly)
+          # Check if the directory was created successfully
           if [ -d "$DT_OUTPUT_PATH" ]; then
-            echo "Device tree directory found at: $DT_OUTPUT_PATH"
+            echo "Successfully generated device tree directory at: $DT_OUTPUT_PATH"
             # Set the path as an output variable for the upload step
             echo "device_tree_path=$DT_OUTPUT_PATH" >> $GITHUB_OUTPUT
           else
-            echo "Error: Standard device tree path $DT_OUTPUT_PATH not found. Checking 'working/' directory."
-            # Fallback to the 'working' directory mentioned in the docs
-            DT_OUTPUT_PATH_FALLBACK=$(find working -maxdepth 3 -type d -name "YT-X705X" 2>/dev/null | head -n 1)
-            
-            if [ -d "$DT_OUTPUT_PATH_FALLBACK" ]; then
-                echo "Device tree directory found at: $DT_OUTPUT_PATH_FALLBACK"
-                echo "device_tree_path=$DT_OUTPUT_PATH_FALLBACK" >> $GITHUB_OUTPUT
-            else
-                echo "Critical Error: Could not locate the generated device tree directory."
-                exit 1
-            fi
+            echo "Critical Error: Could not locate the generated device tree directory at $DT_OUTPUT_PATH."
+            exit 1
           fi
 
       - name: Verify Generated Files
