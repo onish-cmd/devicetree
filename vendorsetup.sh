@@ -5,6 +5,6 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-add_lunch_combo omni_YT-X705X-user
-add_lunch_combo omni_YT-X705X-userdebug
-add_lunch_combo omni_YT-X705X-eng
+add_lunch_combo omni_YTX705-user
+add_lunch_combo omni_YTX705-userdebug
+add_lunch_combo omni_YTX705-eng
