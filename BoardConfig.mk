@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-DEVICE_PATH := device/lenovo/YT-X705X
+DEVICE_PATH := device/lenovo/YTX705
 
 # For building with minimal manifest
 ALLOW_MISSING_DEPENDENCIES := true
