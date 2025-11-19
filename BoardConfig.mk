@@ -93,6 +93,8 @@ PLATFORM_VERSION := 16.1.0
 # Set the target platform version for compatibility with Android 10/Q
 TARGET_PLATFORM_VERSION := 9.0
 PLATFORM_VERSION_LAST_STABLE := 9.0
+PLATFORM_VERSION := 9.0.0
+PLATFORM_VERSION_CODENAME := PPR1
 # -----------------------
 
 
