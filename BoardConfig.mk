@@ -91,8 +91,8 @@ VENDOR_SECURITY_PATCH := 2099-12-31
 PLATFORM_VERSION := 16.1.0
 # --- ADD THESE LINES ---
 # Set the target platform version for compatibility with Android 10/Q
-TARGET_PLATFORM_VERSION := 10.0
-PLATFORM_VERSION_LAST_STABLE := 10.0
+TARGET_PLATFORM_VERSION := 9.0
+PLATFORM_VERSION_LAST_STABLE := 9.0
 # -----------------------
 
 
